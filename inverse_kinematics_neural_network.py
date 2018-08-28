@@ -38,7 +38,7 @@ def loss_func_abs_der(actual_y,predicted_y):
 # Output is the Angle in radians between pi and -pi	
 input_max = np.pi 
 input_min = -0.99*np.pi 
-data_points = 2001
+data_points = 301
 func = 	np.linspace(input_min,input_max,data_points)
 	
 actual_y = np.matrix(func).T # 4x1 [[0.0],[1.0],[4.0],[9.0],[16.0],[24.0],[36.0]]
@@ -59,7 +59,7 @@ hidden_layers_1 = 100
 hidden_layers_2 = 50
 input_layers = 2
 output_nodes = 1
-lr = 0.00001
+lr = 0.005
 
 
 # There are two hidden layers in the Deep network. Weights and bias of Hidden and output is initialized below.
@@ -85,14 +85,14 @@ while error > threshold and epoch<100000:
 	logits_3 = np.add(np.matmul(activated_layer_2,weights_3),bias_3) # 21x6 6x1 : 21x1
 	predicted_y = sigmoid(logits_3) # 21x1
 
-	dweights_3 = np.dot(activated_layer_2.T,np.multiply(loss_func_abs_der(actual_y,predicted_y),der_sigmoid(predicted_y))) # 15x21,21x1: 15x1
-	dweights_2 = np.dot(activated_layer_1.T,np.multiply((np.dot(np.multiply(loss_func_abs_der(actual_y,predicted_y),der_sigmoid(predicted_y)),weights_3.T)),der_sigmoid(activated_layer_2)))#1x21,(21x1,1x15) : 1x15
-	dweights_1 = np.dot(data.T,np.multiply(np.dot(np.multiply((np.dot(np.multiply(loss_func_abs_der(actual_y,predicted_y),der_sigmoid(predicted_y)),weights_3.T)),der_sigmoid(activated_layer_2)),weights_2.T),der_sigmoid(activated_layer_1)))#1x21,(21x1,1x15) : 1x15
+	dweights_3 = np.dot(activated_layer_2.T,np.multiply(loss_func_mse_der(actual_y,predicted_y),der_sigmoid(predicted_y))) # 15x21,21x1: 15x1
+	dweights_2 = np.dot(activated_layer_1.T,np.multiply((np.dot(np.multiply(loss_func_mse_der(actual_y,predicted_y),der_sigmoid(predicted_y)),weights_3.T)),der_sigmoid(activated_layer_2)))#1x21,(21x1,1x15) : 1x15
+	dweights_1 = np.dot(data.T,np.multiply(np.dot(np.multiply((np.dot(np.multiply(loss_func_mse_der(actual_y,predicted_y),der_sigmoid(predicted_y)),weights_3.T)),der_sigmoid(activated_layer_2)),weights_2.T),der_sigmoid(activated_layer_1)))#1x21,(21x1,1x15) : 1x15
 	
 	
-	dbias_3 = np.multiply(loss_func_abs_der(actual_y,predicted_y),der_sigmoid(predicted_y)).sum(axis=0) #21x1: 1x1
-	dbias_2 = np.multiply((np.dot(np.multiply(loss_func_abs_der(actual_y,predicted_y),der_sigmoid(predicted_y)),weights_3.T)),der_sigmoid(activated_layer_2)).sum(axis=0)#21x1,1x15: 21x15: 1x15
-	dbias_1 = np.multiply(np.dot(np.multiply(np.dot(np.multiply(loss_func_abs_der(actual_y,predicted_y),der_sigmoid(predicted_y)),weights_3.T),der_sigmoid(activated_layer_2)),weights_2.T),der_sigmoid(activated_layer_1)).sum(axis=0)#21x1,1x15: 21x15: 1x15
+	dbias_3 = np.multiply(loss_func_mse_der(actual_y,predicted_y),der_sigmoid(predicted_y)).sum(axis=0) #21x1: 1x1
+	dbias_2 = np.multiply((np.dot(np.multiply(loss_func_mse_der(actual_y,predicted_y),der_sigmoid(predicted_y)),weights_3.T)),der_sigmoid(activated_layer_2)).sum(axis=0)#21x1,1x15: 21x15: 1x15
+	dbias_1 = np.multiply(np.dot(np.multiply(np.dot(np.multiply(loss_func_mse_der(actual_y,predicted_y),der_sigmoid(predicted_y)),weights_3.T),der_sigmoid(activated_layer_2)),weights_2.T),der_sigmoid(activated_layer_1)).sum(axis=0)#21x1,1x15: 21x15: 1x15
 
 	weights_1 = weights_1 -lr*dweights_1
 	weights_2 = weights_2 -lr*dweights_2
@@ -102,7 +102,7 @@ while error > threshold and epoch<100000:
 	bias_2 = bias_2 - lr*dbias_2
 	bias_3 = bias_3 - lr*dbias_3
 	
-	error = loss_func_abs(actual_y,predicted_y)/data_points
+	error = loss_func_mse(actual_y,predicted_y)
 
 	if epoch%10000 == 0:
 		loss_graph.append(error)

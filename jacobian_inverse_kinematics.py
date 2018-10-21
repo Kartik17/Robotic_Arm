@@ -12,7 +12,7 @@ def note_time_func(use_func):
         time_start = time.time()
         result = use_func(*args,**kwargs)
         delta_time = time.time() - time_start
-        print('Time to run the function is: {0:.2f}'.format(delta_time))
+        print('Time to run the function - {} -  is: {}'.format(use_func.__name__,delta_time))
         return result
 
     return wrapper_func
@@ -57,20 +57,21 @@ T_03 = T_01*T_12*T_23
 # which won't work with common array operations.
 
 @note_time_func
-def iteration(T_03):
+def iteration(guess,target_list, T_03):
     error = 1.0
     tolerance = 0.01
 
     # Initial Guess - Joint Angles
-    Q = np.matrix([[0.],[np.pi/3.]])
+    Q = guess
     # X,Y expression
     gen_gripper = T_03[:2,-1]
     # X,Y value for Target Position
-    target = np.matrix([[0.],[2.0]])
+    target = np.matrix(target_list)
     # Jacobian
     jacobian = jacobian_func(T_03,[q1,q2])
     jacobian_inv = jacobian.inv("LU")
 
+    
     while error> tolerance:
         T_q = np.matrix(gen_gripper.evalf(subs = {q1: Q[0,0], q2: Q[1,0], q3: 0.})).astype(np.float64)
 
@@ -81,10 +82,34 @@ def iteration(T_03):
         error = LA.norm(delta_T)
 
         print(error)
+
     return Q
 
-Q = iteration(T_03)
+Q_list = []
+transform_matrices = [T_01,T_02,T_03]
+guess = np.matrix([[0.],[np.pi/3.]])
+target_list = [[[0.],[2.0]],[[0.2],[1.8]],[[0.4],[1.4]],[[0.6],[1.0]],[[0.8],[1.0]],[[1.0],[1.0]],[[1.5],[0.5]],[[2.],[0.0]]]
+for target in target_list:
+    Q = iteration(guess,target,T_03)
+    Q_list.append(Q)
+    guess = Q
+
+#Q= iteration(T_03)
 import matplotlib.pyplot as plt
+from matplotlib import animation
+
+
+def init():
+    line.set_data([],[])
+    return line,
+
+def animate(i):
+    global Q_list, transform_matrices
+    x = [np.array(transform_matrices[k].evalf(subs = {q1: Q_list[i][0,0], q2: Q_list[i][1,0], q3: 0.})[0,-1]).astype(np.float64) for k in range(len(transform_matrices))]
+    y = [np.array(transform_matrices[k].evalf(subs = {q1: Q_list[i][0,0], q2: Q_list[i][1,0], q3: 0.})[1,-1]).astype(np.float64) for k in range(len(transform_matrices))]
+
+    line.set_data(x,y)
+    return line,
 
 def plot_arm(Q,transform_matrices):
     fig = plt.figure()
@@ -99,6 +124,17 @@ def plot_arm(Q,transform_matrices):
     ax1.grid(linestyle ='--')
     plt.show()
 
-plot_arm(Q,[T_01,T_02,T_03])
+#plot_arm(Q,[T_01,T_02,T_03])
+
+fig = plt.figure()
+ax = fig.add_subplot(111, aspect='equal', autoscale_on=False, xlim=(-2.5, 2.5), ylim=(-2.5, 2.5))
+ax.set_xlabel('X axis')
+ax.set_ylabel('Y axis')
+ax.grid()
+line, = ax.plot([], [], '-o', lw=2, c = 'b')
+
+anim = animation.FuncAnimation(fig, animate, init_func=init, frames=10, interval=1000, blit=True)
+plt.show()
+
 print(Q)
 print(np.matrix(T_03.evalf(subs = {q1: Q[0,0], q2: Q[1,0], q3: 0.})[:2,-1]))

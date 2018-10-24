@@ -1,2 +1,2 @@
-# Inverse-Kinematics-using-Neural-Network
-Predicting Inverse kinematics using Neural Network
+# Forward and Inverse Kinematics for Robotic Manipulator
+Predicting Forward and Inverse Kinematics for Robotic Manipulator

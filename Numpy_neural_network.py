@@ -43,36 +43,40 @@ def tanh(x):
 def der_tanh(x):
 	return 1 - np.power(x,2)
 
+def max_min_transform(arr):
+	a = (arr.max()-arr.min())
+	b = arr.min()
+	arr = (arr - b)/a
+
+	return arr,a,b
+
+
 # Output is the Angle in radians between pi and -pi
 input_max = 0.0*np.pi
 input_min = 2*np.pi -0.1
-data_points = 200
+data_points = 50
 func = 	np.linspace(input_min,input_max,data_points)#(101,1)
-
 actual_y = np.matrix(func).T # 101x1 [[0.0],[1.0],[4.0],[9.0],[16.0],[24.0],[36.0]]
+
+
 plt.plot(func,actual_y)
 plt.plot(func,np.cos(actual_y))
-a = (actual_y.max()-actual_y.min())
-b = actual_y.min()
-actual_y = (actual_y - b)/a
-plt.plot(func,actual_y*a + b)
-plt.plot(func,np.cos(actual_y*a + b))
 plt.show()
 
 
 
-
+actual_y,a,b = max_min_transform(actual_y)
 # Input is the x,y coordinates of the arm.From pi to -pi, cos(theta) and sin(theta)
 data = np.matrix([np.cos(np.linspace(input_min,input_max,data_points)),np.sin(np.linspace(input_min,input_max,data_points))]).T #601x2
 mean_data = data.mean(axis = 0)
 std_data = data.std(axis = 0)
 data = (data - mean_data)/std_data
 
-hidden_layers_1 = 50
-hidden_layers_2 = 50
+hidden_layers_1 = 20
+hidden_layers_2 = 20
 input_layers = 2
 output_nodes = 1
-lr = 0.01
+lr = 0.05
 C = 0.0
 d = 0.0
 
@@ -123,7 +127,6 @@ while error > threshold and epoch<150000:
 		print('Error at {}:{}'.format(epoch,error))
 
 print('Epochs:{}'.format(epoch))
-#print('Predicted y: {}'.format(((predicted_y*2)-1)))
 print('Weights:{}'.format(weights_1))
 print('Bias:{}'.format(bias_1))
 
@@ -142,7 +145,6 @@ ax_1.plot(range(0,len(loss_graph)),loss_graph)
 # Should Plot a Circle
 ax_2 = fig.add_subplot(212)
 ax_2.plot(np.cos(predicted_y*a+b),np.sin(predicted_y*a+b))
-
 plt.show()
 
 

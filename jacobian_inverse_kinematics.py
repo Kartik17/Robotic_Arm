@@ -4,137 +4,189 @@ from numpy import linalg as LA
 from numpy.linalg import inv
 import time
 import logging
-
-#################### Logging Function: Decorator ###################
-
-def note_time_func(use_func):
-    def wrapper_func(*args,**kwargs):
-        time_start = time.time()
-        result = use_func(*args,**kwargs)
-        delta_time = time.time() - time_start
-        print('Time to run the function - {} -  is: {}'.format(use_func.__name__,delta_time))
-        return result
-
-    return wrapper_func
-
-######################## Forward Kinematics ########################
-
-# Create Symbolic variables
-alpha0,alpha1,alpha2,alpha3,alpha4,alpha5,alpha6 = symbols('alpha0:7')
-a0,a1,a2,a3,a4,a5,a6 = symbols('a0:7')
-d1,d2,d3,d4,d5,d6,d7 = symbols('d1:8')
-q1,q2,q3,q4,q5,q6,q7 = symbols('q1:8')
-
-# Create Modified DH parameters, Two link PLanar arm:
-subs_dict = {   alpha0:0 , a0:0, d1: 0,q1: q1,
-                alpha1:0 , a1:1., d2:0, q2: q2,
-				alpha2:0 , a2:1., d3:0, q3: q3}
-
-# Define Modified DH Transformation matrix
-
-def TF_matrix(alpha,a,d,q):
-    TF = Matrix([[cos(q),-sin(q), 0, a],
-                [sin(q)*cos(alpha), cos(q)*cos(alpha), -sin(alpha), -sin(alpha)*d],
-                [sin(q)*sin(alpha), cos(q)*sin(alpha), cos(alpha),  cos(alpha)*d],
-                [   0,  0,  0,  1]])
-    return TF
-
-######################## Inverse Kinematics ########################
-
-@note_time_func # Equivalent to: jacobian_func = note_time_func(jacobian_func)
-def jacobian_func(T,q):
-    jacobian_mat = [diff(T[:2,-1],q[i]).reshape(1,len(q)) for i in range(len(q))]
-    jacobian_mat = Matrix(jacobian_mat).T
-    return jacobian_mat
-
-T_01 = TF_matrix(alpha0,a0,d1,q1).subs(subs_dict)
-T_12 = TF_matrix(alpha1,a1,d2,q2).subs(subs_dict)
-T_23 = TF_matrix(alpha2,a2,d3,q3).subs(subs_dict)
-T_02 = T_01*T_12
-T_03 = T_01*T_12*T_23
-
-# Important Note: If you skip the astype method, numpy will create a matrix of type 'object',
-# which won't work with common array operations.
-
-@note_time_func
-def iteration(guess,target_list, T_03):
-    error = 1.0
-    tolerance = 0.01
-
-    # Initial Guess - Joint Angles
-    Q = guess
-    # X,Y expression
-    gen_gripper = T_03[:2,-1]
-    # X,Y value for Target Position
-    target = np.matrix(target_list)
-    # Jacobian
-    jacobian = jacobian_func(T_03,[q1,q2])
-    jacobian_inv = jacobian.inv("LU")
-
-    
-    while error> tolerance:
-        T_q = np.matrix(gen_gripper.evalf(subs = {q1: Q[0,0], q2: Q[1,0], q3: 0.})).astype(np.float64)
-
-        delta_T = target - T_q
-
-        Q = Q + np.matrix(jacobian_inv.evalf(subs = {q1: Q[0,0], q2: Q[1,0], q3: 0.})).astype(np.float64) * delta_T
-
-        error = LA.norm(delta_T)
-
-        print(error)
-
-    return Q
-
-Q_list = []
-transform_matrices = [T_01,T_02,T_03]
-guess = np.matrix([[0.],[np.pi/3.]])
-target_list = [[[0.],[2.0]],[[0.2],[1.8]],[[0.4],[1.4]],[[0.6],[1.0]],[[0.8],[1.0]],[[1.0],[1.0]],[[1.5],[0.5]],[[2.],[0.0]]]
-for target in target_list:
-    Q = iteration(guess,target,T_03)
-    Q_list.append(Q)
-    guess = Q
-
-#Q= iteration(T_03)
+import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.pyplot as plt
 from matplotlib import animation
+import math
+
+class robotic_arm():
+
+	def __init__(self):
+		self.joints = 0
+		self.alpha = None
+		self.a = None
+		self.q =None
+		self.d = None
+		self.dh_params = {}
+		self.tf_matrices_list = []
+
+
+	def set_joints(self,joint_number):
+		if joint_number > 0:
+			self.joints = int(joint_number)
+			self.set_dh_params()
+		else:
+			raise('Joints Number has to be positive')
+
+	def set_dh_params(self):
+		self.alpha = symbols('alpha0:' + str(self.joints))
+		self.a = symbols('a0:' + str(self.joints))
+		self.q = symbols('q1:' + str(self.joints + 1))
+		self. d = symbols('d1:' + str(self.joints + 1))
+
+	def show_dh_params(self):
+		print('DH Parameters are: {}'.format(self.dh_params))
+
+	def set_dh_param_dict(self,dh_params_values):
+
+		for i in range(len(dh_params_values)):
+			self.dh_params[self.alpha[i]] = dh_params_values[i][0]
+			self.dh_params[self.a[i]] = dh_params_values[i][1]
+			
+			if dh_params_values[i][2] == 'D':
+				self.dh_params[self.d[i]] = self.d[i]
+
+			else:
+				self.dh_params[self.d[i]] = dh_params_values[i][2]
+			
+			if dh_params_values[i][3] == 'R':
+				self.dh_params[self.q[i]] = self.q[i]
+
+			else:
+				self.dh_params[self.q[i]] = dh_params_values[i][3]
+
+		self.set_tranform_matrices()
+			
+	def set_tranform_matrices(self):
+		T = eye(self.joints)
+		for i in range(self.joints):
+			T = T*self.TF_matrix(self.alpha[i],self.a[i],self.d[i],self.q[i]).subs(self.dh_params)
+			self.tf_matrices_list.append(T)
+
+
+	def show_transform_matrices(self):
+		print('Transform Matrices are: {}'.format(self.tf_matrices_list)) 	
+		
+	@staticmethod
+	def TF_matrix(alpha,a,d,q):
+	    TF = Matrix([[cos(q),-sin(q), 0., a],
+	                [sin(q)*cos(alpha), cos(q)*cos(alpha), -sin(alpha), -sin(alpha)*d],
+	                [sin(q)*sin(alpha), cos(q)*sin(alpha),  cos(alpha),  cos(alpha)*d],
+	                [   0.,  0.,  0.,  1.]])
+	    return TF
+
+
+	def forward_kinematics(self,theta_list):
+		coordinates = []
+		theta_dict = {}
+		T_0G = self.tf_matrices_list[-1]
+		
+		for i in range(len(theta_list)):
+			theta_dict[self.q[i]] = theta_list[i]
+
+		temp = T_0G.evalf(subs = theta_dict,chop = True, maxn = 4)
+
+		x = [np.array(temp[0,-1]).astype(np.float64)]
+		y = [np.array(temp[1,-1]).astype(np.float64)]
+		z = [np.array(temp[2,-1]).astype(np.float64)]
+
+		coordinates.append(np.array([x,y,z]))
+
+		return coordinates
+
+
+	def jacobian_func(self):
+		T_0G = self.tf_matrices_list[-1]
+		self.jacobian_mat = [diff(T_0G[:3,-1],self.q[i]).reshape(1,3) for i in range(len(self.q))]
+		self.jacobian_mat = Matrix(self.jacobian_mat).T
+
+	def inverse_kinematics(self,guess,target):
+	    error = 1.0
+	    tolerance = 0.1
+
+	    # Initial Guess - Joint Angles
+	    Q = guess
+	    # X,Y expression
+	    # X,Y value for Target Position
+	    target = np.matrix(target)
+	    # Jacobian
+	    self.jacobian_func()
+	    #jacobian_inv = jacobian.inv("LU")
+	    T_0G = self.tf_matrices_list[-1]
+
+	    error_grad = []
+
+	    theta_dict = {}
+
+	    lr = 0.05
+	    while error> tolerance:
+	    	for i in range(len(Q)):
+				theta_dict[self.q[i]] = Q[i]
+
+	        T_q =np.matrix(self.forward_kinematics(Q)[-1])
+
+	        delta_T = target - T_q
+
+	        Q = Q + lr*(np.matrix(self.jacobian_mat.evalf(subs = theta_dict,chop = True, maxn = 4)).astype(np.float64).T * delta_T).T
+	        Q = np.array(Q)[0]
+
+	        prev_error = error
+
+	        error = LA.norm(delta_T)
+
+	        error_grad.append((error-prev_error))
+
+	        print(error)
+	    
+	    return Q
+	def path_plan(self,guess,target_list):
+		Q_list = []
+		for target in target_list:
+			Q = self.inverse_kinematics(guess,target)
+			print(Q)
+			Q_list.append(Q)
+			guess = Q
+		return Q_list
 
 
 def init():
-    line.set_data([],[])
-    return line,
+	line.set_data([],[])
+	return line,
 
 def animate(i):
-    global Q_list, transform_matrices
-    x = [np.array(transform_matrices[k].evalf(subs = {q1: Q_list[i][0,0], q2: Q_list[i][1,0], q3: 0.})[0,-1]).astype(np.float64) for k in range(len(transform_matrices))]
-    y = [np.array(transform_matrices[k].evalf(subs = {q1: Q_list[i][0,0], q2: Q_list[i][1,0], q3: 0.})[1,-1]).astype(np.float64) for k in range(len(transform_matrices))]
+	global transform_matrices,q,Q_list
 
-    line.set_data(x,y)
-    return line,
+	x = [np.array(transform_matrices[k].evalf(subs = {q[0]: Q_list[i][0], q[1]: Q_list[i][1], q[2]: Q_list[i][2], q[3]: Q_list[i][3]},chop = True, maxn = 4)[0,-1]).astype(np.float64) for k in range(len(transform_matrices))]
+	y = [np.array(transform_matrices[k].evalf(subs = {q[0]: Q_list[i][0], q[1]: Q_list[i][1], q[2]: Q_list[i][2], q[3]: Q_list[i][3]},chop = True, maxn = 4)[1,-1]).astype(np.float64) for k in range(len(transform_matrices))]
+	z = [np.array(transform_matrices[k].evalf(subs = {q[0]: Q_list[i][0], q[1]: Q_list[i][1], q[2]: Q_list[i][2], q[3]: Q_list[i][3]},chop = True, maxn = 4)[2,-1]).astype(np.float64) for k in range(len(transform_matrices))]
+	    
+	line.set_data(np.array(x),np.array(y))
+	line.set_3d_properties(np.array(z))
+	return line,
 
-def plot_arm(Q,transform_matrices):
-    fig = plt.figure()
-    ax1 = fig.add_subplot(111)
 
-    # Check For Lambdify to Convert to Numpy matrix
-    x = [np.array(transform_matrices[i].evalf(subs = {q1: Q[0,0], q2: Q[1,0], q3: 0.})[0,-1]).astype(np.float64) for i in range(len(transform_matrices))]
-    y = [np.array(transform_matrices[i].evalf(subs = {q1: Q[0,0], q2: Q[1,0], q3: 0.})[1,-1]).astype(np.float64) for i in range(len(transform_matrices))]
-    ax1.plot(x,y)
-    ax1.set_xlim(-2.5,2.5)
-    ax1.set_ylim(-2.5,2.5)
-    ax1.grid(linestyle ='--')
-    plt.show()
+if __name__ == '__main__':
+	arm = robotic_arm()
+	arm.set_joints(4)
+	arm.set_dh_param_dict([[0,0,1,'R'],[-np.pi/2.,0,0,'R'],[0,1,0,'R'],[0,1,0,'R']])
+	
+	transform_matrices = arm.tf_matrices_list
+	q = arm.q
+	target_list = [[[1.6],[1.0],[0.6]],[[1.4],[1.0],[0.4]],[[1.2],[1.0],[0.2]],[[1.0],[1.0],[0.0]],[[1.0],[0.8],[0.0]]]
+	Q_list = arm.path_plan([0.,0.,0.1,0.],target_list)
+	
+	
 
-#plot_arm(Q,[T_01,T_02,T_03])
-
-fig = plt.figure()
-ax = fig.add_subplot(111, aspect='equal', autoscale_on=False, xlim=(-2.5, 2.5), ylim=(-2.5, 2.5))
-ax.set_xlabel('X axis')
-ax.set_ylabel('Y axis')
-ax.grid()
-line, = ax.plot([], [], '-o', lw=2, c = 'b')
-
-anim = animation.FuncAnimation(fig, animate, init_func=init, frames=10, interval=1000, blit=True)
-plt.show()
-
-print(Q)
-print(np.matrix(T_03.evalf(subs = {q1: Q[0,0], q2: Q[1,0], q3: 0.})[:2,-1]))
+	fig = plt.figure()
+	ax = p3.Axes3D(fig)
+	ax.set_xlim3d([0.0, 2.0])
+	ax.set_xlabel('X')
+	ax.set_ylim3d([0.0, 2.0])
+	ax.set_ylabel('Y')
+	ax.set_zlim3d([0.0, 2.0])
+	ax.set_zlabel('Z')
+	ax.grid()
+	    
+	line, = ax.plot(np.array([0.]), np.array([0.]), np.array([0.]), lw = 2.0)
+	anim = animation.FuncAnimation(fig, animate, init_func=init, frames= len(target_list), interval=20, blit=True)
+	plt.show()

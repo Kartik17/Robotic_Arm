@@ -1,7 +1,7 @@
 # Forward and Inverse Kinematics for Robotic Manipulator
 Predicting Forward and Inverse Kinematics for Robotic Manipulator
 
-Motivation: 
+### Motivation: 
 
 •	To develop a general n-revolute robotic arm class in python.
 
@@ -10,7 +10,7 @@ Motivation:
 •	Solve inverse kinematics using Deep Neural Network, because of there being no general solution to solve for inverse kinematics of a non-intersecting wrist arm.
 
 
-Outcome
+### Outcome
 
 •	Developed a class of robotic arm, and PID controller.
 

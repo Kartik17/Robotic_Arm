@@ -61,7 +61,6 @@ class PIDController:
     def update(self, measured_value, timestamp):
         delta_time = timestamp - self.last_timestamp_
         if delta_time == 0:
-            # Delta time is zero
             return 0
         
         # Calculate the error 
@@ -80,12 +79,10 @@ class PIDController:
         self.last_error_ = error
         
         # Address max windup
-        ########################################
         if self.error_sum_ > self.max_windup_:
             self.error_sum_ = self.max_windup_
         elif self.error_sum_ < -self.max_windup_:
-            self.error_sum_ = -self.max_windup_
-        ########################################
+            self.error_sum_ = -self.max_windup
         
         # Proportional error
         p = self.kp_ * error
@@ -93,16 +90,18 @@ class PIDController:
         # Integral error
         i = self.ki_ * self.error_sum_
        
-        # Recalculate the derivative error here incorporating 
         # derivative smoothing!
         ########################################
-        d = self.kd_*(self.alpha*(delta_error/delta_time) + (1 - self.alpha)*(self.u_d[-1]/self.kd_))
+        if self.kd_ == 0.0:
+            d = 0.0
+        else:
+            d = self.kd_*(self.alpha*(delta_error/delta_time) + (1 - self.alpha)*(self.u_d[-1]/self.kd_))
         ########################################
         
         # Set the control effort
         u = p + i + d
         
-        # Enforce actuator saturation limits
+        # Actuator saturation limits
         ########################################
         if u <= self.umin:
             u = self.umin
@@ -110,7 +109,7 @@ class PIDController:
             u = self.umax
         ########################################
     
-        # Here we are storing the control effort history for post control
+        # Storing the control effort history for post control
         # observations. 
         self.u_p.append(p)
         self.u_i.append(i)

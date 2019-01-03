@@ -82,7 +82,7 @@ class PIDController:
         if self.error_sum_ > self.max_windup_:
             self.error_sum_ = self.max_windup_
         elif self.error_sum_ < -self.max_windup_:
-            self.error_sum_ = -self.max_windup
+            self.error_sum_ = -self.max_windup_
         
         # Proportional error
         p = self.kp_ * error

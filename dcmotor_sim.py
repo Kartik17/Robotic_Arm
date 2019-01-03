@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from pid_controller import PIDController
-
+from lpsb import trajectory_planner
 # DC Motor class
 
 class Dc_motor():
@@ -26,6 +26,7 @@ class Dc_motor():
         self.theta_output = [0.]
 
         self.control = False
+        self.theta_desired = 0.
     
     def set_motor_param(self,R,L,b,kb,kt,I_motor):
         self.R, self.L, self.b, self.kb, self.kt, self.I_motor = R,L,b,kb,kt, I_motor
@@ -57,10 +58,15 @@ class Dc_motor():
     def set_controller(self):
         self.control = True
     
+    def motor_path(self,omega_desired):
+        self.omega_desired = omega_desired
+
     def update(self,pid):
         time_steps = int(self.duration/self.delta_t)
+        print(time_steps)
         for i in xrange(1,time_steps):
-        # Current 
+        # Current
+            pid.setTarget(self.omega_desired[i])
             self.i_phase.append((self.delta_t/self.L)*(self.V - self.i_phase[i-1]*self.R - self.kb*self.ang_speed[i-1]) + self.i_phase[i-1])
             if self.i_phase[i]>= (self.V/self.R):
                 self.i_phase[i] = (self.V/self.R)
@@ -78,9 +84,11 @@ class Dc_motor():
             self.theta_output.append(self.theta[i]*self.N)
 
             time = delta_t*i
-            if time > 10.0:
-                pid.setTarget(400)
+            
+            #if time > 10.0:
+                #pid.setTarget(400)
             if self.control:
+                #self.V = pid.update(self.ang_speed[i],time)
                 self.V = pid.update(self.ang_speed[i],time)
     
     def plot_graph(self):
@@ -106,17 +114,26 @@ if __name__ == '__main__':
     N = 1
     n = 1
     delta_t = 0.001
-    T_load = 0.
+    T_load = 0.01
 
     motor_1 = Dc_motor()
     motor_1.set_motor_param(R,L,b,kb,kt,I_motor)
+    motor_1.set_load_torque(T_load)
     motor_1.set_voltage(V)
-    motor_1.set_duration(20.0)
+    motor_1.set_duration(30.0)
     motor_1.set_controller()
     motor_1.set_sample_time(0.001)
 
-    pid = PIDController(kp = 0.2, ki = 1.0, kd = 0.001, max_windup = 20,
+    pid = PIDController(kp = 0.6, ki = 3, kd = 0.001, max_windup = 20,
             start_time = 0, alpha = 0.75, u_bounds = [0.0, V])
-    pid.setTarget(800)
+    Q_matrix = np.matrix(np.array([10,1000,3000,5000]))
+    time = np.array([10,10,10])
+    acceleration = np.array([40,35,60,50])
+
+    theta_desired,omega_desired = trajectory_planner(Q_matrix,time,acceleration,delta_t)
+    motor_1.motor_path(omega_desired)
+    print(len(omega_desired))
+
+    #pid.setTarget(800)
     motor_1.update(pid)
     motor_1.plot_graph()

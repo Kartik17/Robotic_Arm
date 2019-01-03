@@ -34,7 +34,7 @@ class robotic_arm():
 		self.alpha = symbols('alpha0:' + str(self.joints))
 		self.a = symbols('a0:' + str(self.joints))
 		self.q = symbols('q1:' + str(self.joints + 1))
-		self. d = symbols('d1:' + str(self.joints + 1))
+		self.d = symbols('d1:' + str(self.joints + 1))
 
 	def show_dh_params(self):
 		print('DH Parameters are: {}'.format(self.dh_params))
@@ -110,6 +110,7 @@ class robotic_arm():
 	    # X,Y expression
 	    # X,Y value for Target Position
 	    target = np.matrix(target)
+	    print(target.shape)
 	    # Jacobian
 	    self.jacobian_func()
 	    #jacobian_inv = jacobian.inv("LU")
@@ -141,8 +142,7 @@ class robotic_arm():
 	        	lr = 0.2
 	        error_grad.append((error-prev_error))
 
-	        print(error)
-
+	        #print(error)
 	    return Q
 	def path_plan(self,guess,target_list):
 		Q_list = []
@@ -153,6 +153,7 @@ class robotic_arm():
 			print('Traget: {} ,  Predicted: {}'.format(target, predicted_coordinates))
 			Q_list.append(Q)
 			guess = Q
+		print(np.matrix(Q_list), np.matrix(Q_list).shape)
 		return Q_list
 
 
@@ -181,6 +182,7 @@ if __name__ == '__main__':
 	q = arm.q
 	target_list = [[[1.6],[1.0],[0.6]],[[1.4],[1.0],[0.4]],[[1.2],[1.0],[0.2]],[[1.0],[1.0],[0.0]],[[1.0],[0.8],[0.0]]]
 	Q_list = arm.path_plan([0.,0.,0.1,0.],target_list)
+	#print(Q_list)
 	
 	
 

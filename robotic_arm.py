@@ -7,6 +7,7 @@ import logging
 import mpl_toolkits.mplot3d.axes3d as p3
 import matplotlib.pyplot as plt
 from matplotlib import animation
+from dcmotor_sim import	Dc_motor
 import math
 
 class robotic_arm():
@@ -144,17 +145,18 @@ class robotic_arm():
 
 	        #print(error)
 	    return Q
-	def path_plan(self,guess,target_list):
+	def path_plan(self,guess,target_list,time,acceleration):
 		Q_list = []
 		for target in target_list:
 			Q = self.inverse_kinematics(guess,target)
 			predicted_coordinates = self.forward_kinematics(Q)[-1]
-			print(Q)
-			print('Traget: {} ,  Predicted: {}'.format(target, predicted_coordinates))
+			print('Target: {} ,  Predicted: {}'.format(target, predicted_coordinates))
 			Q_list.append(Q)
 			guess = Q
-		print(np.matrix(Q_list), np.matrix(Q_list).shape)
-		return Q_list
+		#print(np.matrix(Q_list), np.matrix(Q_list).shape)
+		Q_matrix = np.matrix(Q_list)
+		theta_all, omega_all = lpsb.trajectory_planner(Q_matrix,time,acceleration,0.01)
+		#return Q_list
 
 
 def init():
@@ -164,7 +166,7 @@ def init():
 def animate(i):
 	global transform_matrices,q,Q_list
 
-	x = [np.array(transform_matrices[k].evalf(subs = {q[0]: Q_list[i][0], q[1]: Q_list[i][1], q[2]: Q_list[i][2], q[3]: Q_list[i][3]},chop = True, maxn = 4)[0,-1]).astype(np.float64) for k in range(len(transform_matrices))]
+	x = [np.array(transform_matrices[k].evalf(subs = {q[0]: Q_list[i][0], q[1]: Q_list[i][1], q[2]:                                                    Q_list[i][2], q[3]: Q_list[i][3]},chop = True, maxn = 4)[0,-1]).astype(np.float64) for k in range(len(transform_matrices))]
 	y = [np.array(transform_matrices[k].evalf(subs = {q[0]: Q_list[i][0], q[1]: Q_list[i][1], q[2]: Q_list[i][2], q[3]: Q_list[i][3]},chop = True, maxn = 4)[1,-1]).astype(np.float64) for k in range(len(transform_matrices))]
 	z = [np.array(transform_matrices[k].evalf(subs = {q[0]: Q_list[i][0], q[1]: Q_list[i][1], q[2]: Q_list[i][2], q[3]: Q_list[i][3]},chop = True, maxn = 4)[2,-1]).astype(np.float64) for k in range(len(transform_matrices))]
 	    
@@ -180,8 +182,10 @@ if __name__ == '__main__':
 	
 	transform_matrices = arm.tf_matrices_list
 	q = arm.q
-	target_list = [[[1.6],[1.0],[0.6]],[[1.4],[1.0],[0.4]],[[1.2],[1.0],[0.2]],[[1.0],[1.0],[0.0]],[[1.0],[0.8],[0.0]]]
-	Q_list = arm.path_plan([0.,0.,0.1,0.],target_list)
+	target_list = [[[1.6],[1.0],[0.6]],[[1.4],[1.0],[0.4]],[[1.2],[1.0],[0.2]],[[1.0],[1.0],[0.0]]]
+	time = np.array([10,10,10])
+    acceleration = np.array([40,35,60,50])
+	Q_list = arm.path_plan([0.,0.,0.1,0.],target_list,time,acceleration)
 	#print(Q_list)
 	
 	

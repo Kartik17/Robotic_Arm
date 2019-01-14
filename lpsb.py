@@ -7,6 +7,9 @@ def trajectory_planner(Q_matrix, time, acceleration, delta_time):
 	cartesian_points = Q_matrix.shape[0] # Total no of cartesian points 
 	total_time = sum(time)
 
+	theta_all = []
+	omega_all = []
+
 	for point in range(cartesian_points):
 		
 		acceleration_signed_array = []
@@ -82,13 +85,21 @@ def trajectory_planner(Q_matrix, time, acceleration, delta_time):
 		plt.plot(np.array(range(len(theta)))*delta_time,omega)
 		plt.show()
 
+		plt.plot(np.array(range(len(theta)))*delta_time,theta)
+		#plt.plot(np.array(time),current_point_array, c = 'r', marker = '*')
+		plt.show()
 
-	return theta,omega
+
+		theta_all.append(theta)
+		omega_all.append(omega)
+
+
+	return theta_all,omega_all
 
 
 if __name__ == '__main__':
-	Q_matrix = np.matrix(np.array([0.1,0.2,1.0]))
+	Q_matrix = np.matrix([np.array([0.1,0.2,1.0]), np.array([0.1,0.2,1.0]), np.array([0.1,0.2,1.0])])
 	time = np.array([10,10])
 	acceleration = np.array([0.01,0.02,0.03])
 
-	#print(trajectory_planner(Q_matrix,time,acceleration,0.01))
+	trajectory_planner(Q_matrix,time,acceleration,0.01)

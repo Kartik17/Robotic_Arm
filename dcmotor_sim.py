@@ -65,8 +65,8 @@ class Dc_motor():
     def update(self,pid):
         time_steps = int(self.duration/self.delta_t)
         print(time_steps)
-        for i in xrange(1,time_steps):
-        # Current
+        for i in range(1,time_steps):
+            # Current
             pid.setTarget(self.omega_desired[i])
             self.i_phase.append((self.delta_t/self.L)*(self.V - self.i_phase[i-1]*self.R - self.kb*self.ang_speed[i-1]) + self.i_phase[i-1])
             if self.i_phase[i]>= self.V_max/self.R:
@@ -124,7 +124,7 @@ if __name__ == '__main__':
     delta_t = 0.001
     T_load = 0
 
-    motor_1 = Dc_motor()
+    motor_1: Dc_motor = Dc_motor()
     motor_1.set_motor_param(R,L,b,kb,kt,I_motor)
     motor_1.set_load_torque(T_load)
     motor_1.set_voltage(V)

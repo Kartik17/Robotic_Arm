@@ -166,7 +166,7 @@ def init():
 def animate(i):
 	global transform_matrices,q,Q_list
 
-	x = [np.array(transform_matrices[k].evalf(subs = {q[0]: Q_list[i][0], q[1]: Q_list[i][1], q[2]:                                                    Q_list[i][2], q[3]: Q_list[i][3]},chop = True, maxn = 4)[0,-1]).astype(np.float64) for k in range(len(transform_matrices))]
+	x = [np.array(transform_matrices[k].evalf(subs = {q[0]: Q_list[i][0], q[1]: Q_list[i][1], q[2]: Q_list[i][2], q[3]: Q_list[i][3]},chop = True, maxn = 4)[0,-1]).astype(np.float64) for k in range(len(transform_matrices))]
 	y = [np.array(transform_matrices[k].evalf(subs = {q[0]: Q_list[i][0], q[1]: Q_list[i][1], q[2]: Q_list[i][2], q[3]: Q_list[i][3]},chop = True, maxn = 4)[1,-1]).astype(np.float64) for k in range(len(transform_matrices))]
 	z = [np.array(transform_matrices[k].evalf(subs = {q[0]: Q_list[i][0], q[1]: Q_list[i][1], q[2]: Q_list[i][2], q[3]: Q_list[i][3]},chop = True, maxn = 4)[2,-1]).astype(np.float64) for k in range(len(transform_matrices))]
 	    
@@ -183,7 +183,7 @@ if __name__ == '__main__':
 	transform_matrices = arm.tf_matrices_list
 	q = arm.q
 	target_list = [[[1.6],[1.0],[0.6]],[[1.4],[1.0],[0.4]],[[1.2],[1.0],[0.2]],[[1.0],[1.0],[0.0]]]
-	time = np.array([10,10,10])
+	time = np.array([10,10,20])
     acceleration = np.array([40,35,60,50])
 	Q_list = arm.path_plan([0.,0.,0.1,0.],target_list,time,acceleration)
 	#print(Q_list)
